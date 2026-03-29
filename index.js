@@ -1,5 +1,5 @@
 const express = require('express');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 
 const app = express();
 
@@ -11,7 +11,20 @@ app.get('/', (req, res) => {
 app.get('/run', (req, res) => {
   const userInput = req.query.cmd;
 
-  exec(userInput, (error, stdout, stderr) => {
+  // Allowlist of safe commands that can be run via this endpoint.
+  // Keys are user-supplied command names; values define the executable and fixed args.
+  const allowedCommands = {
+    date:    { file: 'date',    args: [] },
+    uptime:  { file: 'uptime',  args: [] },
+    hostname:{ file: 'hostname',args: [] }
+  };
+
+  const cmdConfig = allowedCommands[userInput];
+  if (!cmdConfig) {
+    return res.status(400).send('Invalid or unsupported command.');
+  }
+
+  execFile(cmdConfig.file, cmdConfig.args, (error, stdout, stderr) => {
     if (error) {
       return res.send(`Error: ${error.message}`);
     }
